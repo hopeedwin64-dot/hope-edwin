@@ -34,7 +34,7 @@ export const SITE_METADATA = {
   title: 'Skool Community Setup, Management & Growth Expert',
   tagline: 'Helping business owners build, organize, and grow better Skool communities.',
   profilePhoto: '/assets/aistudio/424936_a94214e4.png',
-  email: 'patricia.slyvia@example.com', // Placeholder easily customizable
+  email: 'patriciaslyvia005@gmail.com',
   phone: '+1 (555) 234-5678',
   location: 'Available Worldwide · Remote Consultant',
   socialLinks: {
