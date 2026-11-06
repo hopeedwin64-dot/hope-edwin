@@ -15,36 +15,39 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 
-// SMTP configuration with fallbacks
+// SMTP configuration from environment variables (e.g. Netlify / hosting dashboard)
 const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
 const smtpPort = Number(process.env.SMTP_PORT) || 465;
-const smtpUser = process.env.SMTP_USER || 'patriciaslyvia005@gmail.com';
+const smtpUser = process.env.SMTP_USER || process.env.CONTACT_EMAIL || 'patriciaslyvia005@gmail.com';
 // Clean app password of any spaces if present
-const smtpPass = (process.env.SMTP_PASS || 'ejon bffm uyiy bulj').replace(/\s+/g, '');
+const smtpPass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
 const isSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
-const contactEmail = process.env.CONTACT_EMAIL || 'patriciaslyvia005@gmail.com';
-const fromEmail = process.env.SMTP_FROM_EMAIL || 'patriciaslyvia005@gmail.com';
+const contactEmail = process.env.CONTACT_EMAIL || process.env.SMTP_USER || 'patriciaslyvia005@gmail.com';
+const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'patriciaslyvia005@gmail.com';
 const fromName = process.env.SMTP_FROM_NAME || 'Patricia Slyvia - Portfolio Enquiries';
 
-// Transporter instance
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: isSecure,
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-});
+// Helper to create transport on demand with current process.env values
+function getTransporter() {
+  const currentHost = process.env.SMTP_HOST || smtpHost;
+  const currentPort = Number(process.env.SMTP_PORT) || smtpPort;
+  const currentUser = process.env.SMTP_USER || smtpUser;
+  const currentPass = (process.env.SMTP_PASS || smtpPass).replace(/\s+/g, '');
+  const currentSecure = process.env.SMTP_SECURE === 'true' || currentPort === 465;
 
-// Verify connection configuration on startup (non-blocking)
-transporter.verify((error) => {
-  if (error) {
-    console.warn('[SMTP Warning] Failed to connect to SMTP server:', error.message);
-  } else {
-    console.log('[SMTP Ready] Server is configured and ready to send emails.');
+  if (!currentUser || !currentPass) {
+    return null;
   }
-});
+
+  return nodemailer.createTransport({
+    host: currentHost,
+    port: currentPort,
+    secure: currentSecure,
+    auth: {
+      user: currentUser,
+      pass: currentPass,
+    },
+  });
+}
 
 // Helper to escape HTML characters
 function escapeHtml(text: string): string {
@@ -305,6 +308,14 @@ To reply, write to ${email}
       text: emailText,
       html: emailHtml,
     };
+
+    const transporter = getTransporter();
+    if (!transporter) {
+      return res.status(503).json({
+        success: false,
+        error: 'Email service credentials are being configured in the hosting environment. Please click below to send your enquiry directly via your email app.',
+      });
+    }
 
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Email Sent] Message sent successfully to ${contactEmail}: ${info.messageId}`);
